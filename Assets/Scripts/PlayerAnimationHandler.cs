@@ -65,4 +65,9 @@ public class PlayerAnimationHandler
     {
          // place holder
     }
+
+    public void TriggerDeathAnimation()
+    {
+        animator.SetBool("dead", true);
+    }
 }

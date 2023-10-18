@@ -1,7 +1,7 @@
 using UnityEngine;
 using Unity.Netcode;
 
-public class Player : NetworkBehaviour
+public class Player : NetworkBehaviour, IDamageable
 {
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 5f;
@@ -18,6 +18,16 @@ public class Player : NetworkBehaviour
     private const float MOUSE_Y_MULTIPLIER = -1f;
     private const float EXTRA_HEIGHT_TEST = 0.1f;
 
+    [Header("PowerUp Settings")]
+    [SerializeField] private float speedMultiplier = 2f;
+    [SerializeField] private float shieldDuration = 5f;
+    private bool isShielded = false;
+    private bool isSpeedBoosted = false;
+
+    [Header("Health Settings")]
+    [SerializeField] private int health = 100;
+
+    private BulletSpawner _bulletSpawner;
     private float normalFOV;
     private Camera playerCamera;
     private Vector3 moveDirection = Vector3.zero;
@@ -51,7 +61,15 @@ public class Player : NetworkBehaviour
     {
         SetupCameraAndListener();
         SetupNetworkVariables();
+        
+        // Get the BulletSpawner component
+        _bulletSpawner = GetComponent<BulletSpawner>();
+        if (_bulletSpawner == null)
+        {
+            Debug.LogError("BulletSpawner not found on player.");
+        }
     }
+
 
     private void SetupCameraAndListener()
     {
@@ -75,6 +93,67 @@ public class Player : NetworkBehaviour
             OwnerHandleInput();
             HandleMouseLook();
         }
+
+        ApplyPowerUps();
+    }
+
+     public void ApplyDamage(int damage)
+    {
+        // Reduce the player's health by the damage amount
+        health -= damage;
+
+        // Log the new health value for debugging
+        Debug.Log($"Player {NetworkObjectId} now has {health} health.");
+
+        // Check if the player's health is less than or equal to 0
+        if (health <= 0)
+        {
+            // Handle player death
+            HandleDeath();
+        }
+    }
+
+    private void HandleDeath()
+    {
+        Debug.Log($"Player {NetworkObjectId} has died.");
+        
+        // Trigger Death Animation
+        playerAnimationHandler.TriggerDeathAnimation();
+        
+        // Disable Controls
+        this.enabled = false; // Disable the Player script to stop taking inputs     
+        
+    }
+
+/** 
+    private void Respawn()
+    {
+        // respawn logic will go heere
+        // Reset Health mayber ->  health = maxHealth;
+        
+        // setup respawn position logic
+
+        // reenable controls -> this.enabled = true;
+        
+        // setup reset animation logic and add to player animation script
+        // somthing like -> playerAnimationHandler.ResetDeathAnimation();
+    }
+*/
+
+    private void ApplyPowerUps()
+    {
+        if (isShielded)
+        {
+            GetComponent<Renderer>().material.color = Color.blue;
+        }
+        else if (isSpeedBoosted)
+        {
+            GetComponent<Renderer>().material.color = Color.red;
+        }
+        else
+        {
+            GetComponent<Renderer>().material.color = Color.white;
+        }
     }
 
     private void OwnerHandleInput()
@@ -82,6 +161,7 @@ public class Player : NetworkBehaviour
         HandleMovementInput();
         HandleMouseInput();
         HandleActionInput();
+        HandleShootingInput();
     }
 
     private void HandleMovementInput()
@@ -130,6 +210,9 @@ public class Player : NetworkBehaviour
         if (Input.GetMouseButtonDown(0) && !isReloading)
         {
             playerAnimationHandler.TriggerShootAnimation();
+
+            // Perform a hitscan instead of spawning a bullet object
+            _bulletSpawner.PerformHitscanServerRpc();
         }
     }
 
@@ -257,5 +340,56 @@ public class Player : NetworkBehaviour
     public void EndRoll()
     {
         playerAnimationHandler.EndRoll();
+    }
+
+private void OnTriggerEnter(Collider other)
+    {
+        PowerUp powerUp = other.GetComponent<PowerUp>();
+        if (powerUp != null)
+        {
+            powerUp.ApplyEffect(gameObject);
+        }
+
+        PlayerSpawnedThing pst = other.GetComponent<PlayerSpawnedThing>();
+        if (pst != null && pst.sourcePlayer != gameObject)
+        {
+            pst.sourcePlayer.GetComponent<Player>().IncreaseScore(1);
+        }
+    }
+
+    public void ModifySpeed(float multiplier, float duration)
+    {
+        if (!isSpeedBoosted)
+        {
+            movementSpeed *= multiplier;
+            isSpeedBoosted = true;
+            Invoke("ResetSpeed", duration);
+        }
+    }
+
+
+    private void ResetSpeed()
+    {
+        movementSpeed /= speedMultiplier;
+        isSpeedBoosted = false;
+    }
+
+    public void ActivateShield()
+    {
+        if (!isShielded)
+        {
+            isShielded = true;
+            Invoke("DeactivateShield", shieldDuration);
+        }
+    }
+
+    private void DeactivateShield()
+    {
+        isShielded = false;
+    }
+
+    public void IncreaseScore(int amount)
+    {
+        Debug.Log($"Player {NetworkObjectId} score increased by {amount}");
     }
 }
