@@ -475,6 +475,7 @@ GameObject:
   - component: {fileID: 5529301544039423116}
   - component: {fileID: -1462783791461066415}
   - component: {fileID: -802078452036733107}
+  - component: {fileID: 7259168121383256792}
   m_Layer: 0
   m_Name: Space No Aura
   m_TagString: Untagged
@@ -542,6 +543,10 @@ MonoBehaviour:
   gravity: 25
   minBoundary: {x: -10, y: 0, z: -10}
   maxBoundary: {x: 10, y: 0, z: 10}
+  aimingFOV: 40
+  speedMultiplier: 2
+  shieldDuration: 5
+  health: 100
 --- !u!114 &-5837727509879712024
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -664,6 +669,20 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &7259168121383256792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 193908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f08dbe9814c634bb689738b88c562c00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bulletDamage: 5
+  shootingRange: 100
 --- !u!1 &198750
 GameObject:
   m_ObjectHideFlags: 0
