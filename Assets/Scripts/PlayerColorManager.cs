@@ -65,22 +65,26 @@ public class PlayerColorManager : NetworkBehaviour
         if (OwnerClientId == NetworkManager.ServerClientId)
         {
             networkedColor.Value = Color.white;
-            return;
         }
-
-        if (availableColors.Count > 0)
+        else if (availableColors.Count > 0)
         {
             Color assignedColor = availableColors[0];
             availableColors.RemoveAt(0);
             networkedColor.Value = assignedColor;
-           // Debug.Log($"Assigned color {assignedColor} to client {OwnerClientId}");
         }
         else
         {
             networkedColor.Value = Color.gray;
         }
-    }
 
+        // Update the lobby with the player's color.
+        LobbyManager lobbyManager = FindObjectOfType<LobbyManager>();
+        if (lobbyManager != null && lobbyManager.playerCards != null)
+        {
+            // Assuming the UpdatePlayerColor function exists in PlayerCards and takes client ID and color as parameters.
+            lobbyManager.playerCards.UpdatePlayerColor(OwnerClientId, networkedColor.Value);
+        }
+    }
 
     void OnApplicationQuit()
     {

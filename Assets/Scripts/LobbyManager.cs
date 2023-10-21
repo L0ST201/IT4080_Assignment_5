@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
@@ -10,18 +9,27 @@ public class LobbyManager : NetworkBehaviour
     [Header("UI Elements")]
     public Button startButton;
     public TMP_Text statusLabel;
-    public TMP_Text statusText;
+    public TMP_InputField playerNameInput;
+    public Button readyButton;
+    public LobbyUi lobbyUi; // Reference to LobbyUi
+    public PlayerCards playerCards; // Reference to PlayerCards
+    
+    private readonly List<string> prohibitedWords = new List<string> { "exampleBadWord1", "exampleBadWord2" };
 
     private void Start()
     {
         InitializeLobby();
         
         startButton.onClick.AddListener(OnStartButtonClicked);
+        readyButton.onClick.AddListener(ToggleReadyStatus);
+
         NetworkManager.Singleton.OnClientStarted += OnClientStarted;
         NetworkManager.Singleton.OnServerStarted += OnServerStarted;
 
-        if (statusText == null)
-            Debug.LogWarning("statusText is not initialized in LobbyManager.");
+        if (playerNameInput != null)
+        {
+            playerNameInput.onEndEdit.AddListener(ChangePlayerName);
+        }
     }
 
     private void InitializeLobby()
@@ -35,7 +43,6 @@ public class LobbyManager : NetworkBehaviour
         if (!IsHost)
         {
             statusLabel.text = "Waiting for host to start the game.";
-            statusText.text = "Connected as Client";
         }
     }
 
@@ -43,7 +50,61 @@ public class LobbyManager : NetworkBehaviour
     {
         startButton.gameObject.SetActive(true);
         statusLabel.text = "You are the host, please press start game when you are ready.";
-        statusText.text = "Running as Host";
+    }
+
+    public void ChangePlayerName(string newName)
+    {
+        SetPlayerNameServerRpc(NetworkManager.Singleton.LocalClientId, newName);
+    }
+
+    [ServerRpc]
+    public void SetPlayerNameServerRpc(ulong clientId, string playerName)
+    {
+        if (!IsValidName(playerName))
+        {
+            DenyPlayerNameClientRpc(clientId);
+            return;
+        }
+
+        // Update the PlayerCard in the UI
+        playerCards.UpdatePlayerName(clientId, playerName);
+    }
+
+    [ClientRpc]
+    public void DenyPlayerNameClientRpc(ulong clientId)
+    {
+        if (NetworkManager.Singleton.LocalClientId == clientId)
+        {
+            playerNameInput.text = "";
+        }
+    }
+
+    private bool IsValidName(string name)
+    {
+        if (string.IsNullOrEmpty(name) || name.Length < 3 || name.Length > 12)
+        {
+            return false;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-zA-Z0-9]*$"))
+        {
+            return false;
+        }
+
+        foreach (string word in prohibitedWords)
+        {
+            if (name.ToLower().Contains(word.ToLower()))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void ToggleReadyStatus()
+    {
+        // Logic to toggle the player's ready status
     }
 
     private void OnStartButtonClicked()
@@ -68,7 +129,7 @@ public class LobbyManager : NetworkBehaviour
     [ClientRpc]
     public void StartGameClientRpc()
     {
-        // Will put client-specific logic here.
+        // Client-specific logic here.
     }
 
     public void StartGame()
@@ -85,7 +146,7 @@ public class LobbyManager : NetworkBehaviour
         statusLabel.text = "Start something, like the server or the host or the client.";
     }
 
-    private new void OnDestroy() 
+    public override void OnDestroy()
     {
         if (startButton != null)
         {
