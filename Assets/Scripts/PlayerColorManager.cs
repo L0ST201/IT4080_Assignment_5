@@ -1,108 +1,133 @@
-using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
 public class PlayerColorManager : NetworkBehaviour
 {
-    private static List<Color> availableColors = new List<Color>
-    {
-        Color.black,
-        Color.blue,
-        Color.green,
-        Color.yellow,
-        Color.magenta
-    };
-
-    private NetworkVariable<Color> networkedColor = new NetworkVariable<Color>(Color.clear, 
+    // Network Variables
+    private readonly NetworkVariable<Color> _networkedColor = new NetworkVariable<Color>(
+        Color.clear, 
         NetworkVariableReadPermission.Everyone, 
         NetworkVariableWritePermission.Server);
 
-    private Renderer headRenderer;
-    private Renderer legsRenderer;
-    private Renderer torsoRenderer;
-    private bool isApplicationQuitting = false;
-    private bool hasDespawned = false;
+    // Renderer references
+    private Renderer _headRenderer;
+    private Renderer _legsRenderer;
+    private Renderer _torsoRenderer;
 
-    private bool IsHostPlayer()
-    {
-        return NetworkManager.Singleton != null && NetworkManager.Singleton.LocalClientId == NetworkManager.ServerClientId;
-    }
+    // State management
+    private bool _isApplicationQuitting;
+    private bool _hasDespawned;
 
     private void Start()
     {
-        headRenderer = transform.Find("SK_Soldier_Head").GetComponent<Renderer>();
-        legsRenderer = transform.Find("SK_Soldier_Legs").GetComponent<Renderer>();
-        torsoRenderer = transform.Find("SK_Soldier_Torso").GetComponent<Renderer>();
+        InitializeRenderers();
+        _networkedColor.OnValueChanged += OnColorChanged;
 
-        if (!headRenderer || !legsRenderer || !torsoRenderer) 
+        if (IsOwner)
         {
-            Debug.LogError("Renderers not found on player.");
+            RequestColorServerRpc();
         }
+    }
 
-        networkedColor.OnValueChanged += OnColorChanged;
+    private void InitializeRenderers()
+    {
+        _headRenderer = transform.Find("SK_Soldier_Head")?.GetComponent<Renderer>();
+        _legsRenderer = transform.Find("SK_Soldier_Legs")?.GetComponent<Renderer>();
+        _torsoRenderer = transform.Find("SK_Soldier_Torso")?.GetComponent<Renderer>();
 
-        if (IsOwner && !IsHostPlayer())
-        {
-            GetComponent<PlayerColorManager>().RequestColorServerRpc();
-        }
+        if (_headRenderer == null) Debug.LogError("Head Renderer not found on player.");
+        if (_legsRenderer == null) Debug.LogError("Legs Renderer not found on player.");
+        if (_torsoRenderer == null) Debug.LogError("Torso Renderer not found on player.");
     }
 
     private void OnColorChanged(Color oldValue, Color newValue)
     {
+        Debug.Log($"OnColorChanged triggered for {NetworkManager.LocalClientId}. Old Value: {oldValue}, New Value: {newValue}");
         SetPlayerColor(newValue);
+        UpdatePlayerColorClientRpc(NetworkManager.LocalClientId, newValue);
     }
 
     public void SetPlayerColor(Color color)
     {
-        if (headRenderer != null) headRenderer.material.color = color;
-        if (legsRenderer != null) legsRenderer.material.color = color;
-        if (torsoRenderer != null) torsoRenderer.material.color = color;
+        if (!_headRenderer || !_legsRenderer || !_torsoRenderer) 
+        {
+            Debug.LogError("Renderers not found on player.");
+            return;
+        }
+
+        Debug.Log($"Actually setting color to: {color}");
+        _headRenderer.material.color = color;
+        _legsRenderer.material.color = color;
+        _torsoRenderer.material.color = color;
+    }
+
+    public void SetPlayerColorDirectly(Color color)
+    {
+        SetPlayerColor(color);
     }
 
     [ServerRpc]
     public void RequestColorServerRpc()
     {
-        if (OwnerClientId == NetworkManager.ServerClientId)
-        {
-            networkedColor.Value = Color.white;
-            return;
-        }
+        var networkedPlayers = FindObjectOfType<NetworkedPlayers>();
+        Color newColor;
 
-        if (availableColors.Count > 0)
+        if (networkedPlayers != null)
         {
-            Color assignedColor = availableColors[0];
-            availableColors.RemoveAt(0);
-            networkedColor.Value = assignedColor;
-           // Debug.Log($"Assigned color {assignedColor} to client {OwnerClientId}");
+            newColor = networkedPlayers.AssignColorToClient(OwnerClientId);
+            Debug.Log($"Server assigning color {newColor} to client {OwnerClientId}");
+            _networkedColor.Value = newColor;
         }
         else
         {
-            networkedColor.Value = Color.gray;
+            Debug.LogError("NetworkedPlayers instance not found on the server.");
         }
     }
 
-
-    void OnApplicationQuit()
+    [ClientRpc]
+    public void UpdatePlayerColorClientRpc(ulong clientId, Color color)
     {
-        isApplicationQuitting = true;
+        Debug.Log($"Client {NetworkManager.LocalClientId} received color update RPC. ClientID: {clientId}, Color: {color}");
+        if (NetworkManager.LocalClientId != clientId)
+        {
+            Debug.Log($"Setting color for client {clientId} to {color}");
+            SetPlayerColor(color);
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        _isApplicationQuitting = true;
     }
 
     public override void OnNetworkDespawn()
     {
-        if (isApplicationQuitting || hasDespawned) 
+        if (_isApplicationQuitting || _hasDespawned) 
         {
             return;
         }
 
         if (IsServer)
         {
-            if (availableColors.Count <= 5)
-            {
-                availableColors.Add(networkedColor.Value);
-            }
-            networkedColor.Value = Color.gray;
+            ReturnColorToPool();
         }
 
-        hasDespawned = true;
+        _hasDespawned = true;
+    }
+
+    private void ReturnColorToPool()
+    {
+        if (_networkedColor == null)
+        {
+            Debug.LogError("Networked color is not initialized.");
+            return;
+        }
+
+        var networkedPlayers = FindObjectOfType<NetworkedPlayers>();
+        if (networkedPlayers != null && IsServer)
+        {
+            networkedPlayers.ReturnColor(_networkedColor.Value);
+            _networkedColor.Value = Color.gray;
+        }
     }
 }

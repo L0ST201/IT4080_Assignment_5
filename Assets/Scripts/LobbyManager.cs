@@ -1,101 +1,119 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class LobbyManager : NetworkBehaviour
 {
     [Header("UI Elements")]
-    public Button startButton;
     public TMP_Text statusLabel;
     public TMP_Text statusText;
+    public Button startClientButton;
+    public Button hostGameButton;
+    public Button startServerButton;
+
+    public enum GameState
+    {
+        Lobby,
+        InGame
+    }
+
+    public static GameState CurrentGameState = GameState.Lobby;
 
     private void Start()
     {
-        InitializeLobby();
-        
-        startButton.onClick.AddListener(OnStartButtonClicked);
-        NetworkManager.Singleton.OnClientStarted += OnClientStarted;
-        NetworkManager.Singleton.OnServerStarted += OnServerStarted;
+        EnsurePersistence();
+        InitializeUI();
+    }
+
+    private void EnsurePersistence()
+    {
+        DontDestroyOnLoad(this.gameObject);
+    }
+
+    private void InitializeUI()
+    {
+        if (startClientButton == null || hostGameButton == null || startServerButton == null)
+        {
+            Debug.LogError("One or more UI buttons are not initialized in LobbyManager.");
+            return;
+        }
+
+        startClientButton.onClick.AddListener(OnStartClientButtonClicked);
+        hostGameButton.onClick.AddListener(OnHostGameButtonClicked);
+        startServerButton.onClick.AddListener(OnStartServerButtonClicked);
 
         if (statusText == null)
+        {
             Debug.LogWarning("statusText is not initialized in LobbyManager.");
-    }
-
-    private void InitializeLobby()
-    {
-        startButton.gameObject.SetActive(false);
-        statusLabel.text = "Start something, like the server or the host or the client.";
-    }
-
-    private void OnClientStarted()
-    {
-        if (!IsHost)
-        {
-            statusLabel.text = "Waiting for host to start the game.";
-            statusText.text = "Connected as Client";
         }
     }
 
-    private void OnServerStarted()
+    private void HandleNetworkInstance()
     {
-        startButton.gameObject.SetActive(true);
-        statusLabel.text = "You are the host, please press start game when you are ready.";
-        statusText.text = "Running as Host";
+        if (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsClient)
+        {
+            Debug.LogWarning("Network instance is already running. Shutting down previous instance.");
+            NetworkManager.Singleton.Shutdown();
+        }
     }
 
-    private void OnStartButtonClicked()
+    private void TransitionToLobby()
     {
-        if (NetworkManager.Singleton.IsServer)
+        if (IsServer)
         {
-            StartGameServerRpc();
+            CurrentGameState = GameState.Lobby;
+            NetworkManager.SceneManager.LoadScene("Lobby", LoadSceneMode.Single);
         }
-        else
-        {
-            Debug.Log("This instance does not recognize itself as a server.");
-        }
+    }
+
+    private void OnStartClientButtonClicked()
+    {
+        HandleNetworkInstance();
+        NetworkManager.Singleton.StartClient();
+        TransitionToLobby();
+    }
+
+    private void OnHostGameButtonClicked()
+    {
+        HandleNetworkInstance();
+        NetworkManager.Singleton.StartHost();
+        TransitionToLobby();
+    }
+
+    private void OnStartServerButtonClicked()
+    {
+        HandleNetworkInstance();
+        NetworkManager.Singleton.StartServer();
+        TransitionToLobby();
     }
 
     [ServerRpc]
     public void StartGameServerRpc()
     {
-        StartGame();
+        StartMatch();
         StartGameClientRpc();
     }
 
     [ClientRpc]
     public void StartGameClientRpc()
     {
-        // Will put client-specific logic here.
+        // Client-specific logic here.
     }
 
-    public void StartGame()
+    public void StartMatch()
     {
         if (NetworkManager.Singleton.IsServer)
         {
-            NetworkManager.Singleton.SceneManager.LoadScene("ArenaOne", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            CurrentGameState = GameState.InGame;
+            NetworkManager.Singleton.SceneManager.LoadScene("GameScene", LoadSceneMode.Single);
         }
     }
 
     public void OnQuitGameButtonClicked()
     {
-        startButton.gameObject.SetActive(false);
-        statusLabel.text = "Start something, like the server or the host or the client.";
-    }
-
-    private new void OnDestroy() 
-    {
-        if (startButton != null)
-        {
-            startButton.onClick.RemoveListener(OnStartButtonClicked);
-        }
-
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnClientStarted -= OnClientStarted;
-            NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
-        }
+        // Logic for quitting the game from the start menu (temp removed)
     }
 }

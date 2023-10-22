@@ -2257,6 +2257,9 @@ MonoBehaviour:
   startButton: {fileID: 1120855603}
   statusLabel: {fileID: 1286177738}
   statusText: {fileID: 683640727}
+  startClientButton: {fileID: 484985163}
+  hostGameButton: {fileID: 509149676}
+  startServerButton: {fileID: 2147349849}
 --- !u!114 &1745851863
 MonoBehaviour:
   m_ObjectHideFlags: 0

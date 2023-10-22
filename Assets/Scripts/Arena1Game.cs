@@ -3,6 +3,9 @@ using Unity.Netcode;
 
 public class Arena1Game : NetworkBehaviour
 {
+    [Header("References")]
+    public NetworkedPlayers networkedPlayers;
+
     [Header("Prefabs")]
     [SerializeField] private Player _playerPrefab;
     [SerializeField] private Player _playerWithAuraPrefab;
@@ -21,6 +24,13 @@ public class Arena1Game : NetworkBehaviour
 
     void Start()
     {
+        networkedPlayers = FindObjectOfType<NetworkedPlayers>();
+        if (!networkedPlayers)
+        {
+            Debug.LogError("NetworkedPlayers object not found in the scene!");
+            return;
+        }
+
         SetCameraAndListenerState();
 
         if (NetworkManager.Singleton.IsServer)
@@ -56,7 +66,7 @@ public class Arena1Game : NetworkBehaviour
             return;
         }
 
-       foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
+         foreach (ulong clientId in NetworkManager.Singleton.ConnectedClientsIds)
         {
             Vector3 spawnPosition = NextPosition();
             
@@ -72,6 +82,17 @@ public class Arena1Game : NetworkBehaviour
 
             NetworkObject networkObject = playerSpawn.GetComponent<NetworkObject>();
             networkObject.SpawnWithOwnership(clientId);
+
+            var playerColorManager = playerSpawn.GetComponent<PlayerColorManager>();
+            if (playerColorManager)
+            {
+                int idx = networkedPlayers.FindPlayerIndex(clientId);
+                if (idx != -1)
+                {
+                    Color assignedColor = networkedPlayers.allNetPlayers[idx].color;
+                    playerColorManager.SetPlayerColorDirectly(assignedColor);
+                }
+            }
         }
     }
 }
