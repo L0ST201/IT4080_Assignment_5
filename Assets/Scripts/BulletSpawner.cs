@@ -1,52 +1,36 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
 
 public class BulletSpawner : NetworkBehaviour
 {
-    public Rigidbody BulletPrefab;
-    private float bulletSpeed = 80f;
+    public GameObject BulletPrefab;
+    public float bulletSpeed = 80f;
+    public Transform bulletSpawnPoint;  
     public float timeBetweenBullets = 0.5f;
-    private float shotCountDown = 0f;
-
-    private void Update() 
-    {
-        UpdateShotCooldown();
-    }
-
-    private void UpdateShotCooldown() 
-    {
-        if (IsServer && shotCountDown > 0) 
-        {
-            shotCountDown -= Time.deltaTime;    
-        }
-    }
 
     [ServerRpc]
-    public void FireServerRpc(ServerRpcParams rpcParams = default)
+    public void RequestFireServerRpc()
     {
-        if (CanFire()) 
-        {
-            SpawnBullet(rpcParams);
-        }
+        Debug.Log("Fire request received on server.");
+        FireBullet();
     }
 
-    private bool CanFire() 
+    private void FireBullet()
+{
+    Debug.Log("Instantiating bullet");
+    GameObject newBullet = Instantiate(BulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
+    Rigidbody rb = newBullet.GetComponent<Rigidbody>();
+    if (rb)
     {
-        return shotCountDown <= 0;
+        rb.velocity = bulletSpawnPoint.forward * bulletSpeed;
     }
+    else
+    {
+        Debug.LogError("Bullet Rigidbody not found");
+    }
+    Destroy(newBullet, 3f);
+}
 
-    private void SpawnBullet(ServerRpcParams rpcParams) 
-    {
-        Rigidbody newBullet = Instantiate(BulletPrefab, transform.position, transform.rotation);
-        newBullet.velocity = transform.forward * bulletSpeed;
-        
-        NetworkObject networkObject = newBullet.gameObject.GetComponent<NetworkObject>();
-        if (networkObject != null)
-        {
-            networkObject.SpawnWithOwnership(rpcParams.Receive.SenderClientId);
-        }
-        
-        Destroy(newBullet.gameObject, 3);
-        shotCountDown = timeBetweenBullets;
-    }
 }

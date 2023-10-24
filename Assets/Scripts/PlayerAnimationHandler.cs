@@ -36,10 +36,10 @@ public class PlayerAnimationHandler
         animator.SetTrigger("Roll");
     }
 
-    public void TriggerPickupAnimation()
+/*     public void TriggerPickupAnimation()
     {
         animator.SetTrigger("Pickup");
-    }
+    } */
 
     public void SetJumping(float jumpFactor)
     {

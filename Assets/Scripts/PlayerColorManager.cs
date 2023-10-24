@@ -66,6 +66,11 @@ public class PlayerColorManager : NetworkBehaviour
         SetPlayerColor(color);
     }
 
+        public void UpdateNetworkedColor(Color newColor)
+    {
+        _networkedColor.Value = newColor;
+    }
+
     [ServerRpc]
     public void RequestColorServerRpc()
     {

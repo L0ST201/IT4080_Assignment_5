@@ -94,6 +94,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 481140}
+  - component: {fileID: 6585266600463687434}
   m_Layer: 0
   m_Name: ShootFX
   m_TagString: Untagged
@@ -116,6 +117,22 @@ Transform:
   m_Father: {fileID: 472368}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6585266600463687434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 127044}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f08dbe9814c634bb689738b88c562c00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  BulletPrefab: {fileID: 7034731674193437395, guid: 9f3c9e7184fc54c3d83c86f2505890b5, type: 3}
+  bulletSpeed: 80
+  bulletSpawnPoint: {fileID: 481140}
+  timeBetweenBullets: 0.5
 --- !u!1 &129470
 GameObject:
   m_ObjectHideFlags: 0
@@ -470,13 +487,16 @@ GameObject:
   - component: {fileID: 427246}
   - component: {fileID: 9530324}
   - component: {fileID: 5197150790610477030}
-  - component: {fileID: -5837727509879712024}
+  - component: {fileID: 2886477741921712830}
+  - component: {fileID: -4964788454888923661}
   - component: {fileID: 6768694831885575892}
   - component: {fileID: 5529301544039423116}
   - component: {fileID: -1462783791461066415}
   - component: {fileID: -802078452036733107}
+  - component: {fileID: 8340064873231728727}
+  - component: {fileID: 280201244829549297}
   m_Layer: 0
-  m_Name: Space No Aura
+  m_Name: Space Aura
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -489,8 +509,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 193908}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: -0.297}
+  m_LocalRotation: {x: 0, y: -0.02456313, z: 0, w: 0.99969834}
+  m_LocalPosition: {x: 0, y: -0.033, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -501,7 +521,7 @@ Transform:
   - {fileID: 6086450648591680890}
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -2.815, z: 0}
 --- !u!95 &9530324
 Animator:
   serializedVersion: 5
@@ -512,8 +532,8 @@ Animator:
   m_GameObject: {fileID: 193908}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: cfeff1d67ecb92245941b957cebd290e, type: 3}
-  m_Controller: {fileID: 9100000, guid: 4f177d72549cddd48aad42d447007b7a, type: 2}
-  m_CullingMode: 1
+  m_Controller: {fileID: 9100000, guid: 5d748914d02d2ce4d89d3ba044ed20f0, type: 2}
+  m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 1
   m_LinearVelocityBlending: 0
@@ -535,14 +555,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 557d8ed0bdfc8442287b742a255e7225, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  movementSpeed: 7
+  playerColorNetVar:
+    m_InternalValue: {r: 0, g: 0, b: 0, a: 0}
+  ScoreNetVar:
+    m_InternalValue: 0
+  colorManager: {fileID: 2886477741921712830}
+  bulletSpawner: {fileID: 6585266600463687434}
+  playerColor: {r: 0, g: 0, b: 0, a: 0}
+  scoreMultiplier: 1
+  movementSpeed: 5
   slowWalkMultiplier: 0.5
-  mouseSensitivity: 3
-  jumpForce: 10
+  jumpForce: 5
   gravity: 25
-  minBoundary: {x: -10, y: 0, z: -10}
-  maxBoundary: {x: 10, y: 0, z: 10}
---- !u!114 &-5837727509879712024
+  aimingFOV: 40
+  mouseSensitivity: 3
+--- !u!114 &2886477741921712830
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -554,6 +581,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c2fd1683e90b47688a56b93756a2b33, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &-4964788454888923661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 193908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b45bb197eb46343d884bb47f0a8cfc87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hostParticleEffectPrefab: {fileID: 6725368675793755674, guid: 7855b5cf5fd794e4eae2e836cd01a63e, type: 3}
 --- !u!114 &6768694831885575892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -664,6 +704,34 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!54 &8340064873231728727
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 193908}
+  serializedVersion: 2
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &280201244829549297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 193908}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &198750
 GameObject:
   m_ObjectHideFlags: 0
@@ -707,6 +775,7 @@ GameObject:
   - component: {fileID: 6086450648591680890}
   - component: {fileID: 3312323293661002520}
   - component: {fileID: 2028533401549513098}
+  - component: {fileID: 8765216649277283989}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -722,7 +791,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3774489259290741195}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.558, y: 1.998, z: -0.541}
+  m_LocalPosition: {x: 0.55, y: 1.95, z: -0.85}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -780,3 +849,36 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3774489259290741195}
   m_Enabled: 0
+--- !u!114 &8765216649277283989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3774489259290741195}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2

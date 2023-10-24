@@ -3,31 +3,75 @@ using Unity.Netcode;
 
 public class Player : NetworkBehaviour
 {
-    [Header("Movement Settings")]
-    [SerializeField] private float movementSpeed = 5f;
-    [SerializeField] private float slowWalkMultiplier = 0.5f;
-    [SerializeField] private float mouseSensitivity = 2f;
-    [SerializeField] private float jumpForce = 7f;
-    [SerializeField] private float gravity = 9.81f;
-    [SerializeField] private Vector3 minBoundary = new Vector3(-2, 0, -2);
-    [SerializeField] private Vector3 maxBoundary = new Vector3(2, 0, 2);
-
-    [Header("Aiming Settings")]
-    [SerializeField] private float aimingFOV = 40f;
+    // --- Constants ---
     private const float FOV_LERP_SPEED = 5f;
     private const float MOUSE_Y_MULTIPLIER = -1f;
     private const float EXTRA_HEIGHT_TEST = 0.1f;
 
-    private float normalFOV;
+    // --- NetworkVariables ---
+    [Header("Network Variables")]
+    public NetworkVariable<Color> playerColorNetVar = new NetworkVariable<Color>();
+    public NetworkVariable<int> ScoreNetVar = new NetworkVariable<int>();
+    private NetworkVariable<Vector3> networkedPosition = new NetworkVariable<Vector3>();
+    private NetworkVariable<Quaternion> networkedRotation = new NetworkVariable<Quaternion>();
+
+    // --- Player Attributes ---
+    [Header("Player Attributes")]
+    public PlayerColorManager colorManager;
+    public BulletSpawner bulletSpawner;
+
+    [Header("Player Color")]
+    [Tooltip("The player's color.")]
+    public Color playerColor;
+
+    [Header("Score Settings")]
+    [Tooltip("Multiplier affecting the score.")]
+    public float scoreMultiplier = 1f;
+
+    // --- Movement ---
+    [Header("Movement Settings")]
+    [SerializeField]
+    [Tooltip("Default movement speed of the player.")]
+    private float movementSpeed = 5f;
+
+    [SerializeField]
+    [Tooltip("Multiplier for walking speed.")]
+    private float slowWalkMultiplier = 0.5f;
+
+    [SerializeField]
+    [Tooltip("The force applied when the player jumps.")]
+    private float jumpForce = 7f;
+
+    [SerializeField]
+    [Tooltip("Gravity affecting the player.")]
+    private float gravity = 9.81f;
+
+    // --- Aiming ---
+    [Header("Aiming Settings")]
+    [SerializeField]
+    [Tooltip("Field of view when aiming.")]
+    private float aimingFOV = 40f;
+
+    [SerializeField]
+    [Tooltip("Sensitivity of mouse movements.")]
+    private float mouseSensitivity = 2f;
+
+    // --- Private Runtime Variables ---
+    [Header("Runtime Components and Variables")]
     private Camera playerCamera;
+    private float normalFOV;
     private Vector3 moveDirection = Vector3.zero;
     private CharacterController characterController;
     private float verticalLookRotation = 0f;
     private bool isReloading = false;
     private PlayerAnimationHandler playerAnimationHandler;
-    private NetworkVariable<Vector3> networkedPosition = new NetworkVariable<Vector3>();
-    private NetworkVariable<Quaternion> networkedRotation = new NetworkVariable<Quaternion>();
 
+    public void AddScore(int points)
+    {
+        ScoreNetVar.Value += (int)(points * scoreMultiplier);
+    }
+
+    // --- Initialization and Setup ---
     private void Awake()
     {
         InitializeComponents();
@@ -68,6 +112,7 @@ public class Player : NetworkBehaviour
         networkedRotation.OnValueChanged += OnRotationChanged;
     }
 
+    // --- Update and Input Handling ---
     private void Update()
     {
         if (IsOwner)
@@ -120,16 +165,18 @@ public class Player : NetworkBehaviour
         HandleReloadingInput();
         HandleRollInput();
         HandleJumpInput();
-        HandlePickupInput();
+        // HandlePickupInput();
 
         MoveServerRpc(moveDirection * Time.deltaTime);
     }
 
-    private void HandleShootingInput()
+    // --- Individual Action Handlers ---
+   private void HandleShootingInput()
     {
         if (Input.GetMouseButtonDown(0) && !isReloading)
         {
             playerAnimationHandler.TriggerShootAnimation();
+            bulletSpawner.RequestFireServerRpc();  // Request the server to spawn the bullet
         }
     }
 
@@ -163,31 +210,39 @@ public class Player : NetworkBehaviour
         }
     }
 
-    private void HandlePickupInput()
+/*     private void HandlePickupInput()
     {
         if (Input.GetKeyDown(KeyCode.E))
         {
             playerAnimationHandler.TriggerPickupAnimation();
+
+            // Check for nearby power-ups
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, pickupRadius);
+            foreach (var hitCollider in hitColliders)
+            {
+                BasePowerUp powerUp = hitCollider.GetComponent<BasePowerUp>();
+                if (powerUp)
+                {
+                    powerUp.ServerPickUp(this);
+                    break; // Assuming a player can pick up only one power-up at a time
+                }
+            }
         }
+    } */
+
+    // --- RPCs and their callbacks ---
+    [ServerRpc]
+    private void MoveServerRpc(Vector3 movement)
+    {
+        characterController.Move(movement);
+        networkedPosition.Value = transform.position;
     }
 
-    private void HandleMouseLook()
+    [ServerRpc]
+    private void RotateServerRpc(Vector3 rotation)
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
-        verticalLookRotation += mouseY * MOUSE_Y_MULTIPLIER;
-        verticalLookRotation = Mathf.Clamp(verticalLookRotation, -90f, 90f);
-
-        playerCamera.transform.localRotation = Quaternion.Euler(verticalLookRotation, 0f, 0f);
-        RotatePlayer(mouseX);
-    }
-
-    private void RotatePlayer(float mouseX)
-    {
-        Vector3 rotation = Vector3.up * mouseX;
-        transform.Rotate(rotation);
-        RotateServerRpc(rotation);
+        transform.eulerAngles = rotation;
+        networkedRotation.Value = transform.rotation;
     }
 
     private void OnPositionChanged(Vector3 oldValue, Vector3 newValue)
@@ -200,43 +255,27 @@ public class Player : NetworkBehaviour
         transform.rotation = newValue;
     }
 
-    [ServerRpc]
-    private void MoveServerRpc(Vector3 movement)
+    // --- Public and Animation/Sound-related methods ---
+   public void ChangeColor(Color newColor)
     {
-        if (!IsHostPlayer())
+        if (colorManager == null)
         {
-            Vector3 intendedPosition = transform.position + movement;
-            intendedPosition = Vector3.Max(minBoundary, intendedPosition);
-            intendedPosition = Vector3.Min(maxBoundary, intendedPosition);
-            movement = intendedPosition - transform.position;
+            Debug.LogError("colorManager is not set on the player.");
+            return;
         }
 
-        characterController.Move(movement);
-
-        if (transform.position != networkedPosition.Value)
-        {
-            networkedPosition.Value = transform.position;
-        }
+        playerColorNetVar.Value = newColor;
+        colorManager.UpdateNetworkedColor(newColor);
     }
 
-    [ServerRpc]
-    private void RotateServerRpc(Vector3 rotation)
+    public float GetMovementSpeed()
     {
-        if (rotation != Vector3.zero && transform.rotation != Quaternion.Euler(rotation))
-        {
-            transform.Rotate(rotation);
-            networkedRotation.Value = transform.rotation;
-        }
+        return movementSpeed;
     }
 
-    private bool IsPlayerGrounded()
+    public void SetMovementSpeed(float speed)
     {
-        return Physics.SphereCast(characterController.bounds.center, characterController.radius, Vector3.down, out RaycastHit hit, characterController.bounds.extents.y + EXTRA_HEIGHT_TEST);
-    }
-
-    private bool IsHostPlayer()
-    {
-        return NetworkManager.Singleton != null && NetworkManager.Singleton.LocalClientId == NetworkManager.ServerClientId;
+        movementSpeed = speed;
     }
 
     public void FootStep()
@@ -257,5 +296,29 @@ public class Player : NetworkBehaviour
     public void EndRoll()
     {
         playerAnimationHandler.EndRoll();
+    }
+
+    // --- Utility Methods ---
+    private bool IsPlayerGrounded()
+    {
+        return characterController.isGrounded || Physics.Raycast(transform.position, Vector3.down, characterController.height / 2 + EXTRA_HEIGHT_TEST);
+    }
+
+    private bool IsHostPlayer()
+    {
+        return NetworkManager.Singleton.LocalClientId == OwnerClientId;
+    }
+
+    private void HandleMouseLook()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+
+        verticalLookRotation = Mathf.Clamp(verticalLookRotation + mouseY, -90f, 90f);
+
+        playerCamera.transform.localEulerAngles = new Vector3(verticalLookRotation, 0, 0);
+        transform.Rotate(Vector3.up * mouseX);
+
+        RotateServerRpc(transform.eulerAngles);
     }
 }

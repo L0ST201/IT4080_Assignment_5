@@ -127,6 +127,14 @@ public class NetworkedPlayers : NetworkBehaviour
         }
     }
 
+    public Color GetRandomAvailableColor()
+    {
+        if (_availableColors.Count == 0) return Color.gray;
+
+        int randomIndex = Random.Range(0, _availableColors.Count);
+        return _availableColors[randomIndex];
+    }
+
     public int FindPlayerIndex(ulong clientId)
     {
         for (int i = 0; i < allNetPlayers.Count; i++)
